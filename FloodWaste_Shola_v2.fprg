@@ -1,0 +1,266 @@
+<?xml version="1.0"?>
+<flowgorithm fileversion="4.2">
+    <attributes>
+        <attribute name="name" value="FloodWaste - Shola (Complete)"/>
+        <attribute name="authors" value="chris"/>
+        <attribute name="about" value="Urban Waste Clogging, Flood, and Landslide Early Warning System"/>
+        <attribute name="saved" value="2026-11-12 07:39:00 PM"/>
+        <attribute name="created" value="Y2hyaXM7REVTS1RPUC04S1NHTk9LOzIwMjYtMTEtMDk7MDI6NTk6NTkgUE07MjkzMg=="/>
+        <attribute name="edited" value="Y2hyaXM7REVTS1RPUC04S1NHTk9LOzIwMjYtMTEtMTI7MDc6Mzk6MDAgUE07MzszMDM1"/>
+    </attributes>
+    <function name="Main" type="None" variable="">
+        <parameters/>
+        <body>
+            <declare name="choice" type="Integer" array="False" size=""/>
+            <declare name="total24" type="Real" array="False" size=""/>
+            <declare name="riverlevel" type="Real" array="False" size=""/>
+            <declare name="wasteBlockage" type="Real" array="False" size=""/>
+            <declare name="steepSlope" type="Boolean" array="False" size=""/>
+            <declare name="communityName" type="String" array="False" size=""/>
+            <declare name="landslideWarning" type="Boolean" array="False" size=""/>
+            <declare name="contactCount" type="Integer" array="False" size=""/>
+            <declare name="risk" type="String" array="False" size=""/>
+            <declare name="contacts" type="String" array="True" size="100"/>
+            <declare name="alertHistory" type="String" array="True" size="100"/>
+            <declare name="historyCount" type="Integer" array="False" size=""/>
+            <declare name="outbox" type="String" array="True" size="100"/>
+            <declare name="outboxCount" type="Integer" array="False" size=""/>
+            <assign variable="contactCount" expression="0"/>
+            <assign variable="historyCount" expression="0"/>
+            <assign variable="outboxCount" expression="0"/>
+            <do expression="choice != 4">
+                <output expression="&quot;=== FloodWaste Early Warning System ===&quot;" newline="True"/>
+                <output expression="&quot;1. Enter readings and assess risk&quot;" newline="True"/>
+                <output expression="&quot;2. Register contact&quot;" newline="True"/>
+                <output expression="&quot;3. View alert history&quot;" newline="True"/>
+                <output expression="&quot;4. Exit&quot;" newline="True"/>
+                <output expression="&quot;Enter your choice (1-4):&quot;" newline="True"/>
+                <input variable="choice"/>
+                <if expression="choice = 1">
+                    <then>
+                        <output expression="&quot;Running Assessment...&quot;" newline="True"/>
+                        <output expression="&quot;Enter community name:&quot;" newline="True"/>
+                        <input variable="communityName"/>
+                        <output expression="&quot;Enter 24-hour rainfall total in mm (must be &gt;= 0):&quot;" newline="True"/>
+                        <input variable="total24"/>
+                        <while expression="total24 &lt; 0">
+                            <output expression="&quot;Invalid input. Rainfall cannot be negative. Enter 24-hour rainfall (mm):&quot;" newline="True"/>
+                            <input variable="total24"/>
+                        </while>
+                        <output expression="&quot;Enter river water level in cm (must be &gt;= 0):&quot;" newline="True"/>
+                        <input variable="riverlevel"/>
+                        <while expression="riverlevel &lt; 0">
+                            <output expression="&quot;Invalid input. River level cannot be negative. Enter river level (cm):&quot;" newline="True"/>
+                            <input variable="riverlevel"/>
+                        </while>
+                        <output expression="&quot;Enter drainage waste blockage percentage (0 to 100):&quot;" newline="True"/>
+                        <input variable="wasteBlockage"/>
+                        <while expression="wasteBlockage &lt; 0 OR wasteBlockage &gt; 100">
+                            <output expression="&quot;Invalid percentage. Enter a value between 0 and 100:&quot;" newline="True"/>
+                            <input variable="wasteBlockage"/>
+                        </while>
+                        <output expression="&quot;Is the community near a steep slope? (True/False):&quot;" newline="True"/>
+                        <input variable="steepSlope"/>
+                        <assign variable="risk" expression="AssessRisk(total24, riverlevel, wasteBlockage, steepSlope)"/>
+                        <output expression="&quot;Assessment Complete -&gt; Risk Level: &quot; &amp; risk" newline="True"/>
+                        <if expression="steepSlope == True AND (total24 &gt;= 50 OR risk == &quot;ORANGE&quot; OR risk == &quot;RED&quot;)">
+                            <then>
+                                <assign variable="landslideWarning" expression="True"/>
+                                <output expression="&quot;WARNING: Landslide risk detected due to steep slope and heavy rainfall!&quot;" newline="True"/>
+                            </then>
+                            <else>
+                                <assign variable="landslideWarning" expression="False"/>
+                            </else>
+                        </if>
+                        <if expression="wasteBlockage &gt;= 70">
+                            <then>
+                                <output expression="&quot;ACTION REQUIRED: Severe waste clogging (&quot; &amp; wasteBlockage &amp; &quot;%). Dispatch drainage clearance team!&quot;" newline="True"/>
+                            </then>
+                            <else/>
+                        </if>
+                        <if expression="historyCount &lt; 100">
+                            <then>
+                                <assign variable="alertHistory[historyCount]" expression="communityName &amp; &quot; | Risk: &quot; &amp; risk &amp; &quot; | Rain: &quot; &amp; total24 &amp; &quot;mm | River: &quot; &amp; riverlevel &amp; &quot;cm | Blockage: &quot; &amp; wasteBlockage &amp; &quot;%&quot;"/>
+                                <assign variable="historyCount" expression="historyCount + 1"/>
+                            </then>
+                            <else/>
+                        </if>
+                        <assign variable="outboxCount" expression="SendAlerts(risk, communityName, landslideWarning, wasteBlockage, contactCount, contacts, outbox, outboxCount)"/>
+                    </then>
+                    <else>
+                        <if expression="choice = 2">
+                            <then>
+                                <assign variable="contactCount" expression="RegisterContact(contacts, contactCount)"/>
+                            </then>
+                            <else>
+                                <if expression="choice = 3">
+                                    <then>
+                                        <call expression="ShowAlertHistory(alertHistory, historyCount, outbox, outboxCount)"/>
+                                    </then>
+                                    <else>
+                                        <if expression="choice = 4">
+                                            <then>
+                                                <output expression="&quot;Exiting FloodWaste System. Stay safe!&quot;" newline="True"/>
+                                            </then>
+                                            <else>
+                                                <output expression="&quot;Invalid choice. Please enter 1, 2, 3, or 4.&quot;" newline="True"/>
+                                            </else>
+                                        </if>
+                                    </else>
+                                </if>
+                            </else>
+                        </if>
+                    </else>
+                </if>
+            </do>
+        </body>
+    </function>
+    <function name="AssessRisk" type="String" variable="risk">
+        <parameters>
+            <parameter name="total24" type="Real" array="False"/>
+            <parameter name="riverlevel" type="Real" array="False"/>
+            <parameter name="wasteBlockage" type="Real" array="False"/>
+            <parameter name="steepSlope" type="Boolean" array="False"/>
+        </parameters>
+        <body>
+            <declare name="risk" type="String" array="False" size=""/>
+            <if expression="total24 &gt;= 150 OR riverlevel &gt;= 250 OR (wasteBlockage &gt;= 80 AND total24 &gt;= 80)">
+                <then>
+                    <assign variable="risk" expression="&quot;RED&quot;"/>
+                </then>
+                <else>
+                    <if expression="total24 &gt;= 100 OR riverlevel &gt;= 200 OR (wasteBlockage &gt;= 60 AND total24 &gt;= 50) OR (steepSlope == True AND total24 &gt;= 75)">
+                        <then>
+                            <assign variable="risk" expression="&quot;ORANGE&quot;"/>
+                        </then>
+                        <else>
+                            <if expression="total24 &gt;= 50 OR riverlevel &gt;= 150 OR wasteBlockage &gt;= 50">
+                                <then>
+                                    <assign variable="risk" expression="&quot;YELLOW&quot;"/>
+                                </then>
+                                <else>
+                                    <assign variable="risk" expression="&quot;GREEN&quot;"/>
+                                </else>
+                            </if>
+                        </else>
+                    </if>
+                </else>
+            </if>
+        </body>
+    </function>
+    <function name="RegisterContact" type="Integer" variable="contactCount">
+        <parameters>
+            <parameter name="contacts" type="String" array="True"/>
+            <parameter name="contactCount" type="Integer" array="False"/>
+        </parameters>
+        <body>
+            <declare name="newContact" type="String" array="False" size=""/>
+            <if expression="contactCount &lt; 100">
+                <then>
+                    <output expression="&quot;Enter resident/responder name and phone number:&quot;" newline="True"/>
+                    <input variable="newContact"/>
+                    <while expression="newContact == &quot;&quot;">
+                        <output expression="&quot;Contact cannot be empty. Enter name and phone number:&quot;" newline="True"/>
+                        <input variable="newContact"/>
+                    </while>
+                    <assign variable="contacts[contactCount]" expression="newContact"/>
+                    <assign variable="contactCount" expression="contactCount + 1"/>
+                    <output expression="&quot;Contact registered successfully! Total contacts: &quot; &amp; contactCount" newline="True"/>
+                </then>
+                <else>
+                    <output expression="&quot;Contact directory is full (Max 100 contacts).&quot;" newline="True"/>
+                </else>
+            </if>
+        </body>
+    </function>
+    <function name="SendAlerts" type="Integer" variable="outboxCount">
+        <parameters>
+            <parameter name="risk" type="String" array="False"/>
+            <parameter name="communityName" type="String" array="False"/>
+            <parameter name="landslideWarning" type="Boolean" array="False"/>
+            <parameter name="wasteBlockage" type="Real" array="False"/>
+            <parameter name="contactCount" type="Integer" array="False"/>
+            <parameter name="contacts" type="String" array="True"/>
+            <parameter name="outbox" type="String" array="True"/>
+            <parameter name="outboxCount" type="Integer" array="False"/>
+        </parameters>
+        <body>
+            <declare name="sent" type="Integer" array="False" size=""/>
+            <declare name="queued" type="Integer" array="False" size=""/>
+            <declare name="message" type="String" array="False" size=""/>
+            <declare name="networkAvailable" type="Boolean" array="False" size=""/>
+            <declare name="i" type="Integer" array="False" size=""/>
+            <if expression="contactCount == 0">
+                <then>
+                    <output expression="&quot;No contacts registered yet. Register contacts via Option 2 to dispatch alerts.&quot;" newline="True"/>
+                </then>
+                <else>
+                    <assign variable="sent" expression="0"/>
+                    <assign variable="queued" expression="0"/>
+                    <output expression="&quot;Is cellular/SMS network available? (True/False):&quot;" newline="True"/>
+                    <input variable="networkAvailable"/>
+                    <assign variable="message" expression="risk &amp; &quot; flood alert for &quot; &amp; communityName &amp; &quot; (Drain blockage: &quot; &amp; wasteBlockage &amp; &quot;%). &quot;"/>
+                    <if expression="landslideWarning == True">
+                        <then>
+                            <assign variable="message" expression="message &amp; &quot;Landslide danger: leave steep slopes. &quot;"/>
+                        </then>
+                        <else/>
+                    </if>
+                    <for variable="i" start="0" end="contactCount - 1" direction="inc" step="1">
+                        <if expression="networkAvailable == True">
+                            <then>
+                                <output expression="&quot;[SENT to &quot; &amp; contacts[i] &amp; &quot;]: &quot; &amp; message" newline="True"/>
+                                <assign variable="sent" expression="sent + 1"/>
+                            </then>
+                            <else>
+                                <output expression="&quot;[QUEUED to outbox for &quot; &amp; contacts[i] &amp; &quot;]: &quot; &amp; message" newline="True"/>
+                                <assign variable="queued" expression="queued + 1"/>
+                                <if expression="outboxCount &lt; 100">
+                                    <then>
+                                        <assign variable="outbox[outboxCount]" expression="&quot;To &quot; &amp; contacts[i] &amp; &quot;: &quot; &amp; message"/>
+                                        <assign variable="outboxCount" expression="outboxCount + 1"/>
+                                    </then>
+                                    <else/>
+                                </if>
+                            </else>
+                        </if>
+                    </for>
+                    <output expression="&quot;Alerts sent: &quot; &amp; sent &amp; &quot; | Queued: &quot; &amp; queued" newline="True"/>
+                </else>
+            </if>
+        </body>
+    </function>
+    <function name="ShowAlertHistory" type="None" variable="">
+        <parameters>
+            <parameter name="alertHistory" type="String" array="True"/>
+            <parameter name="historyCount" type="Integer" array="False"/>
+            <parameter name="outbox" type="String" array="True"/>
+            <parameter name="outboxCount" type="Integer" array="False"/>
+        </parameters>
+        <body>
+            <declare name="i" type="Integer" array="False" size=""/>
+            <output expression="&quot;=== Alert Assessment History ===&quot;" newline="True"/>
+            <if expression="historyCount == 0">
+                <then>
+                    <output expression="&quot;No assessments recorded yet.&quot;" newline="True"/>
+                </then>
+                <else>
+                    <for variable="i" start="0" end="historyCount - 1" direction="inc" step="1">
+                        <output expression="(i + 1) &amp; &quot;. &quot; &amp; alertHistory[i]" newline="True"/>
+                    </for>
+                </else>
+            </if>
+            <output expression="&quot;=== Queued Offline Outbox (&quot; &amp; outboxCount &amp; &quot;) ===&quot;" newline="True"/>
+            <if expression="outboxCount == 0">
+                <then>
+                    <output expression="&quot;Outbox is empty.&quot;" newline="True"/>
+                </then>
+                <else>
+                    <for variable="i" start="0" end="outboxCount - 1" direction="inc" step="1">
+                        <output expression="(i + 1) &amp; &quot;. &quot; &amp; outbox[i]" newline="True"/>
+                    </for>
+                </else>
+            </if>
+        </body>
+    </function>
+</flowgorithm>
