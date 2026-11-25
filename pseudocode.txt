@@ -1,0 +1,443 @@
+================================================================================
+
+PROGRAM: FloodWaste Early Warning System
+
+AUTHOR: Shola
+
+DESCRIPTION: Urban Waste Clogging, Flood, and Landslide Early Warning System
+
+================================================================================
+
+
+
+BEGIN MAIN
+
+    // Declare variables and arrays
+
+    DECLARE choice AS INTEGER
+
+    DECLARE total24, riverlevel, wasteBlockage AS REAL
+
+    DECLARE steepSlope, landslideWarning AS BOOLEAN
+
+    DECLARE communityName, risk AS STRING
+
+    DECLARE contacts[100], alertHistory[100], outbox[100] AS STRING
+
+    DECLARE contactCount, historyCount, outboxCount AS INTEGER
+
+
+
+    // Initialize counters
+
+    SET contactCount = 0
+
+    SET historyCount = 0
+
+    SET outboxCount = 0
+
+
+
+    // Main interactive menu loop
+
+    DO
+
+        DISPLAY "=== FloodWaste Early Warning System ==="
+
+        DISPLAY "1. Enter readings and assess risk"
+
+        DISPLAY "2. Register contact"
+
+        DISPLAY "3. View alert history"
+
+        DISPLAY "4. Exit"
+
+        DISPLAY "Enter your choice (1-4):"
+
+        INPUT choice
+
+
+
+        IF choice == 1 THEN
+
+            DISPLAY "Running Assessment..."
+
+            DISPLAY "Enter community name:"
+
+            INPUT communityName
+
+
+
+            // Validate 24-hour rainfall input
+
+            DISPLAY "Enter 24-hour rainfall total in mm (must be >= 0):"
+
+            INPUT total24
+
+            WHILE total24 < 0 DO
+
+                DISPLAY "Invalid input. Rainfall cannot be negative. Enter 24-hour rainfall (mm):"
+
+                INPUT total24
+
+            END WHILE
+
+
+
+            // Validate river water level input
+
+            DISPLAY "Enter river water level in cm (must be >= 0):"
+
+            INPUT riverlevel
+
+            WHILE riverlevel < 0 DO
+
+                DISPLAY "Invalid input. River level cannot be negative. Enter river level (cm):"
+
+                INPUT riverlevel
+
+            END WHILE
+
+
+
+            // Validate drainage waste blockage percentage
+
+            DISPLAY "Enter drainage waste blockage percentage (0 to 100):"
+
+            INPUT wasteBlockage
+
+            WHILE wasteBlockage < 0 OR wasteBlockage > 100 DO
+
+                DISPLAY "Invalid percentage. Enter a value between 0 and 100:"
+
+                INPUT wasteBlockage
+
+            END WHILE
+
+
+
+            DISPLAY "Is the community near a steep slope? (True/False):"
+
+            INPUT steepSlope
+
+
+
+            // Evaluate flood and waste clogging risk
+
+            SET risk = CALL AssessRisk(total24, riverlevel, wasteBlockage, steepSlope)
+
+            DISPLAY "Assessment Complete -> Risk Level: " + risk
+
+
+
+            // Check secondary compound hazard: Landslide risk
+
+            IF steepSlope == TRUE AND (total24 >= 50 OR risk == "ORANGE" OR risk == "RED") THEN
+
+                SET landslideWarning = TRUE
+
+                DISPLAY "WARNING: Landslide risk detected due to steep slope and heavy rainfall!"
+
+            ELSE
+
+                SET landslideWarning = FALSE
+
+            END IF
+
+
+
+            // Check secondary action: Severe drainage waste clogging
+
+            IF wasteBlockage >= 70 THEN
+
+                DISPLAY "ACTION REQUIRED: Severe waste clogging (" + wasteBlockage + "%). Dispatch drainage clearance team!"
+
+            END IF
+
+
+
+            // Log assessment to history array
+
+            IF historyCount < 100 THEN
+
+                SET alertHistory[historyCount] = communityName + " | Risk: " + risk + " | Rain: " + total24 + "mm | River: " + riverlevel + "cm | Blockage: " + wasteBlockage + "%"
+
+                SET historyCount = historyCount + 1
+
+            END IF
+
+
+
+            // Dispatch or queue alerts to registered contacts
+
+            SET outboxCount = CALL SendAlerts(risk, communityName, landslideWarning, wasteBlockage, contactCount, contacts, outbox, outboxCount)
+
+
+
+        ELSE IF choice == 2 THEN
+
+            SET contactCount = CALL RegisterContact(contacts, contactCount)
+
+
+
+        ELSE IF choice == 3 THEN
+
+            CALL ShowAlertHistory(alertHistory, historyCount, outbox, outboxCount)
+
+
+
+        ELSE IF choice == 4 THEN
+
+            DISPLAY "Exiting FloodWaste System. Stay safe!"
+
+
+
+        ELSE
+
+            DISPLAY "Invalid choice. Please enter 1, 2, 3, or 4."
+
+        END IF
+
+
+
+    WHILE choice != 4
+
+END MAIN
+
+
+
+
+
+// =============================================================================
+
+// FUNCTION: AssessRisk
+
+// Evaluates environmental and drainage readings to classify risk level.
+
+// =============================================================================
+
+FUNCTION AssessRisk(total24, riverlevel, wasteBlockage, steepSlope) RETURNS STRING
+
+    DECLARE risk AS STRING
+
+
+
+    IF total24 >= 150 OR riverlevel >= 250 OR (wasteBlockage >= 80 AND total24 >= 80) THEN
+
+        SET risk = "RED"
+
+    ELSE IF total24 >= 100 OR riverlevel >= 200 OR (wasteBlockage >= 60 AND total24 >= 50) OR (steepSlope == TRUE AND total24 >= 75) THEN
+
+        SET risk = "ORANGE"
+
+    ELSE IF total24 >= 50 OR riverlevel >= 150 OR wasteBlockage >= 50 THEN
+
+        SET risk = "YELLOW"
+
+    ELSE
+
+        SET risk = "GREEN"
+
+    END IF
+
+
+
+    RETURN risk
+
+END FUNCTION
+
+
+
+
+
+// =============================================================================
+
+// FUNCTION: RegisterContact
+
+// Validates and stores a resident or responder contact in the contacts array.
+
+// =============================================================================
+
+FUNCTION RegisterContact(contacts[], contactCount) RETURNS INTEGER
+
+    DECLARE newContact AS STRING
+
+
+
+    IF contactCount < 100 THEN
+
+        DISPLAY "Enter resident/responder name and phone number:"
+
+        INPUT newContact
+
+
+
+        WHILE newContact == "" DO
+
+            DISPLAY "Contact cannot be empty. Enter name and phone number:"
+
+            INPUT newContact
+
+        END WHILE
+
+
+
+        SET contacts[contactCount] = newContact
+
+        SET contactCount = contactCount + 1
+
+        DISPLAY "Contact registered successfully! Total contacts: " + contactCount
+
+    ELSE
+
+        DISPLAY "Contact directory is full (Max 100 contacts)."
+
+    END IF
+
+
+
+    RETURN contactCount
+
+END FUNCTION
+
+
+
+
+
+// =============================================================================
+
+// FUNCTION: SendAlerts
+
+// Formats alert messages and sends via SMS or queues in offline outbox.
+
+// =============================================================================
+
+FUNCTION SendAlerts(risk, communityName, landslideWarning, wasteBlockage, contactCount, contacts[], outbox[], outboxCount) RETURNS INTEGER
+
+    DECLARE sent, queued, i AS INTEGER
+
+    DECLARE message AS STRING
+
+    DECLARE networkAvailable AS BOOLEAN
+
+
+
+    IF contactCount == 0 THEN
+
+        DISPLAY "No contacts registered yet. Register contacts via Option 2 to dispatch alerts."
+
+    ELSE
+
+        SET sent = 0
+
+        SET queued = 0
+
+
+
+        DISPLAY "Is cellular/SMS network available? (True/False):"
+
+        INPUT networkAvailable
+
+
+
+        SET message = risk + " flood alert for " + communityName + " (Drain blockage: " + wasteBlockage + "%). "
+
+        IF landslideWarning == TRUE THEN
+
+            SET message = message + "Landslide danger: leave steep slopes. "
+
+        END IF
+
+
+
+        FOR i = 0 TO contactCount - 1 STEP 1
+
+            IF networkAvailable == TRUE THEN
+
+                DISPLAY "[SENT to " + contacts[i] + "]: " + message
+
+                SET sent = sent + 1
+
+            ELSE
+
+                DISPLAY "[QUEUED to outbox for " + contacts[i] + "]: " + message
+
+                SET queued = queued + 1
+
+                IF outboxCount < 100 THEN
+
+                    SET outbox[outboxCount] = "To " + contacts[i] + ": " + message
+
+                    SET outboxCount = outboxCount + 1
+
+                END IF
+
+            END IF
+
+        END FOR
+
+
+
+        DISPLAY "Alerts sent: " + sent + " | Queued: " + queued
+
+    END IF
+
+
+
+    RETURN outboxCount
+
+END FUNCTION
+
+
+
+
+
+// =============================================================================
+
+// PROCEDURE: ShowAlertHistory
+
+// Displays all recorded risk assessments and queued offline messages.
+
+// =============================================================================
+
+PROCEDURE ShowAlertHistory(alertHistory[], historyCount, outbox[], outboxCount)
+
+    DECLARE i AS INTEGER
+
+
+
+    DISPLAY "=== Alert Assessment History ==="
+
+    IF historyCount == 0 THEN
+
+        DISPLAY "No assessments recorded yet."
+
+    ELSE
+
+        FOR i = 0 TO historyCount - 1 STEP 1
+
+            DISPLAY (i + 1) + ". " + alertHistory[i]
+
+        END FOR
+
+    END IF
+
+
+
+    DISPLAY "=== Queued Offline Outbox (" + outboxCount + ") ==="
+
+    IF outboxCount == 0 THEN
+
+        DISPLAY "Outbox is empty."
+
+    ELSE
+
+        FOR i = 0 TO outboxCount - 1 STEP 1
+
+            DISPLAY (i + 1) + ". " + outbox[i]
+
+        END FOR
+
+    END IF
+
+END PROCEDURE
